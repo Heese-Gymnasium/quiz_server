@@ -1,9 +1,21 @@
 from flask import Flask, request, jsonify
 import users
+import uuid
+from neo4j import GraphDatabase, RoutingControl
+
+
+URI = "neo4j://localhost:7687"
+AUTH = ("neo4j", "password")
+
+driver = GraphDatabase.driver(URI, auth=AUTH)
+    
 
 app = Flask(__name__)
 
 # Für jeden Request muss noch die Session geprüft werden!
+
+def gen_session_id():
+    return str(uuid.uuid4())
 
 @app.route('/api/data', methods=['POST'])
 def receive_data():
