@@ -1,13 +1,13 @@
 from flask import Flask, request, jsonify
 import users
 import uuid
-from neo4j import GraphDatabase, RoutingControl
+# from neo4j import GraphDatabase, RoutingControl
 
 
 URI = "neo4j://localhost:7687"
 AUTH = ("neo4j", "password")
 
-driver = GraphDatabase.driver(URI, auth=AUTH)
+# driver = GraphDatabase.driver(URI, auth=AUTH)
     
 
 app = Flask(__name__)
@@ -17,23 +17,25 @@ app = Flask(__name__)
 def gen_session_id():
     return str(uuid.uuid4())
 
-@app.route('/api/data', methods=['POST'])
-def receive_data():
-    try:
-        data = request.get_json()
-        print(f"Received data: {data}")
-        return jsonify({"status": "success", "message": "Data received"}), 200
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+def get_question_by_id(question_id):
+    with open('questions.csv', 'r') as f:
+        for i, line in enumerate(f):
+            if i == question_id:
+                parts = line.strip().split(';')
+                return {
+                    "id": question_id,
+                    "question": parts[0],
+                    "answers": parts[1:5],
+                    "correct_answer": parts[5]
+                }
+        return None
 
 @app.route('/api/get_next_question', methods=['GET'])
 def get_next_question():
     # Vorerst Testfrage
-    question = {
-        "id": 1,
-        "text": "What is the capital of France?",
-        "options": ["Paris", "London", "Berlin", "Madrid"]
-    }
+    question = get_question_by_id(2)
+    question.pop('correct_answer', None)
+    print(f"Sending question: {question}")
     return jsonify({"status": "success", "question": question}), 200
 
 @app.route('/api/submit_answer', methods=['POST'])
@@ -43,8 +45,14 @@ def submit_answer():
         question_id = data.get('question_id')
         answer = data.get('answer')
         print(f"Received answer for question {question_id}: {answer}")
-        # Richtige Antwort zurückgeben
-        return jsonify({"status": "success", "message": "Answer submitted"}), 200
+        question = get_question_by_id(question_id)
+        if not question:
+            return jsonify({"status": "error", "message": "Question not found"}), 404
+        correct_answer = question.get('correct_answer')
+        if answer == correct_answer:
+            return jsonify({"status": "success", "message": "Correct answer!"}), 200
+        else:
+            return jsonify({"status": "success", "message": "Wrong answer!"}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
