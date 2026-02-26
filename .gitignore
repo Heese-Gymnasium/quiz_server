@@ -1,4 +1,5 @@
 questions.csv
 users.csv
 config.py
+session.json
 __pycache__
