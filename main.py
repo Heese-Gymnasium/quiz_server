@@ -1,14 +1,11 @@
 import datetime
 
 from flask import Flask, request, jsonify
-import users
 import uuid
 import json
-# from neo4j import GraphDatabase, RoutingControl
-
-
-URI = "neo4j://localhost:7687"
-AUTH = ("neo4j", "password")
+import sqlite3
+con = sqlite3.connect("quiz.db")
+cur = con.cursor()
 
 # driver = GraphDatabase.driver(URI, auth=AUTH)
     
@@ -16,6 +13,7 @@ AUTH = ("neo4j", "password")
 app = Flask(__name__)
 
 # Für jeden Request muss noch die Session geprüft werden!
+# TODO: Datenbank-Funktionnen bauen
 
 def authenticate(request):
     sid = request.headers.get('Session-ID')
@@ -29,6 +27,7 @@ def identify(username, password):
             if parts[0] == username and parts[1] == password:
                 return True
     return False
+    # TODO: Datenbank nutzen
 
 def gen_session_id(username, timestamp):
     session_data = {
@@ -39,6 +38,7 @@ def gen_session_id(username, timestamp):
     with open('session.json', 'a') as f:
         json.dump(session_data, f)
         f.write('\n')
+    # TODO: Session in Datenbank speichern
     return session_data['sid']
 
 def get_question_by_id(question_id):
