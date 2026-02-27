@@ -12,6 +12,91 @@ cur = con.cursor()
 
 app = Flask(__name__)
 
+
+def init_db():
+    # Create tables if they don't exist
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question TEXT NOT NULL,
+            answer1 TEXT NOT NULL,
+            answer2 TEXT NOT NULL,
+            answer3 TEXT NOT NULL,
+            answer4 TEXT NOT NULL,
+            correct_answer TEXT NOT NULL
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS user_answered_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            question_id INTEGER NOT NULL,
+            UNIQUE(username, question_id),
+            FOREIGN KEY (username) REFERENCES users(username),
+            FOREIGN KEY (question_id) REFERENCES questions(id)
+        )
+    ''')
+    con.commit()
+
+def load_users_to_db():
+    with open('users.csv', 'r') as f:
+        for line in f:
+            parts = line.strip().split(';')
+            if len(parts) >= 2:
+                username, password = parts[0], parts[1]
+                try:
+                    cur.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)', 
+                               (username, password))
+                except sqlite3.IntegrityError:
+                    pass
+    con.commit()
+
+def load_questions_to_db():
+    with open('questions.csv', 'r') as f:
+        for line in f:
+            parts = line.strip().split(';')
+            if len(parts) >= 6:
+                question = parts[0]
+                answers = parts[1:5]
+                correct_answer = parts[5]
+                cur.execute('''
+                    SELECT id FROM questions WHERE question = ?
+                ''', (question,))
+                if not cur.fetchone():
+                    cur.execute('''
+                        INSERT INTO questions (question, answer1, answer2, answer3, answer4, correct_answer)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (question, answers[0], answers[1], answers[2], answers[3], correct_answer))
+    con.commit()
+
+def mark_question_answered(username, question_id):
+    try:
+        cur.execute('''
+            INSERT OR IGNORE INTO user_answered_questions (username, question_id)
+            VALUES (?, ?)
+        ''', (username, question_id))
+        con.commit()
+    except sqlite3.IntegrityError:
+        pass
+
+def has_user_answered_question(username, question_id):
+    cur.execute('''
+        SELECT id FROM user_answered_questions WHERE username = ? AND question_id = ?
+    ''', (username, question_id))
+    return cur.fetchone() is not None
+
+# Initialize database and load data
+init_db()
+load_users_to_db()
+load_questions_to_db()
+
 # Für jeden Request muss noch die Session geprüft werden!
 # TODO: Datenbank-Funktionnen bauen
 
