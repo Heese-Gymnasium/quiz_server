@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 import uuid
 import json
 import sqlite3
+import bcrypt
 con = sqlite3.connect("quiz.db")
 cur = con.cursor()
 
@@ -12,6 +13,10 @@ cur = con.cursor()
 
 app = Flask(__name__)
 
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 def init_db():
     # Create tables if they don't exist
@@ -19,7 +24,10 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            displayname TEXT NOT NULL,
+            deactivated BOOLEAN,
+            admin BOOLEAN
         )
     ''')
     cur.execute('''
@@ -47,19 +55,34 @@ def init_db():
 
 def load_users_to_db():
     with open('users.csv', 'r') as f:
+        next(f)
         for line in f:
             parts = line.strip().split(';')
-            if len(parts) >= 2:
-                username, password = parts[0], parts[1]
+            if len(parts) >= 5:
+                username = parts[0]
+                plain_password = parts[1]
+                displayname = parts[2]
+                deactivated = parts[3]
+                admin = parts[4]
+
+                password_hash = hash_password(plain_password)
+
                 try:
-                    cur.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)', 
-                               (username, password))
+                    cur.execute(
+                        '''
+                        INSERT OR IGNORE INTO users 
+                        (username, password, displayname, deactivated, admin) 
+                        VALUES (?, ?, ?, ?, ?)
+                        ''',
+                        (username, password_hash, displayname, deactivated, admin)
+                    )
                 except sqlite3.IntegrityError:
                     pass
     con.commit()
 
 def load_questions_to_db():
     with open('questions.csv', 'r') as f:
+        next(f)
         for line in f:
             parts = line.strip().split(';')
             if len(parts) >= 6:
@@ -106,13 +129,18 @@ def authenticate(request):
         raise Exception("Unauthorized")
 
 def identify(username, password):
-    with open('users.csv', 'r') as f:
-        for line in f:
-            parts = line.strip().split(';')
-            if parts[0] == username and parts[1] == password:
-                return True
-    return False
-    # TODO: Datenbank nutzen
+    cur.execute("SELECT password FROM users WHERE username = ?", (username,))
+    row = cur.fetchone()
+
+    if row is None:
+        return False
+
+    stored_hash = row[0]
+
+    return bcrypt.checkpw(
+        password.encode('utf-8'),
+        stored_hash.encode('utf-8')
+    )
 
 def gen_session_id(username, timestamp):
     session_data = {
@@ -168,20 +196,17 @@ def submit_answer():
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    # try:
-        print(request.data)
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-        print(f"Login attempt for user: {username}")
-        # Daten mit users.csv ableichen
-        if identify(username, password):
-            sid = gen_session_id(username, datetime.datetime.now())
-            return jsonify({"status": "success", "sid": sid}), 200
-        else:
-            return jsonify({"status": "error", "message": "Invalid credentials"}), 401
-    # except Exception as e:
-    #     return jsonify({"status": "error", "message": str(e)}), 400
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    print(f"Login attempt for user: {username}")
+
+    if identify(username, password):
+        sid = gen_session_id(username, datetime.datetime.now())
+        return jsonify({"status": "success", "sid": sid}), 200
+    else:
+        return jsonify({"status": "error", "message": "Invalid credentials"}), 401
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
