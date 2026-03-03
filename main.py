@@ -188,8 +188,10 @@ def submit_answer():
             return jsonify({"status": "error", "message": "Question not found"}), 404
         correct_answer = question.get('correct_answer')
         if answer == correct_answer:
+            # TODO: Frage als richtig beantwortet markieren
             return jsonify({"status": "success", "message": "Correct answer!"}), 200
         else:
+            # TODO: Frage als falsch beantwortet markieren
             return jsonify({"status": "success", "message": "Wrong answer!"}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
