@@ -19,7 +19,6 @@ def hash_password(password: str) -> str:
     return hashed.decode('utf-8')
 
 def init_db():
-    # Create tables if they don't exist
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,7 +114,6 @@ def has_user_answered_question(username, question_id):
     ''', (username, question_id))
     return cur.fetchone() is not None
 
-# Initialize database and load data
 init_db()
 load_users_to_db()
 load_questions_to_db()
@@ -217,7 +215,6 @@ def logout():
         data = request.get_json()
         username = data.get('username')
         print(f"Logout attempt for user: {username}")
-        # Session löschen
         with open('session.json', 'r') as f:
             sessions = [json.loads(line) for line in f]
         sessions = [s for s in sessions if s['username'] != username]
