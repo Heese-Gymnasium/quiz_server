@@ -190,6 +190,7 @@ def submit_answer():
             mark_question_answered(username = "torsten", question_id, correct = True)
             return jsonify({"status": "success", "message": "Correct answer!"}), 200
         else:
+            # TODO: username finden, kein Syntaxfehler?
             mark_question_answered(username = "torsten", question_id, correct = False)
             return jsonify({"status": "success", "message": "Wrong answer!"}), 200
     except Exception as e:
