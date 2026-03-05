@@ -98,12 +98,12 @@ def load_questions_to_db():
                     ''', (question, answers[0], answers[1], answers[2], answers[3], correct_answer))
     con.commit()
 
-def mark_question_answered(username, question_id):
+def mark_question_answered(username, question_id, correct):
     try:
         cur.execute('''
-            INSERT OR IGNORE INTO user_answered_questions (username, question_id)
-            VALUES (?, ?)
-        ''', (username, question_id))
+            INSERT OR IGNORE INTO user_answered_questions (username, question_id, correct)
+            VALUES (?, ?, ?)
+        ''', (username, question_id, correct))
         con.commit()
     except sqlite3.IntegrityError:
         pass
@@ -186,10 +186,11 @@ def submit_answer():
             return jsonify({"status": "error", "message": "Question not found"}), 404
         correct_answer = question.get('correct_answer')
         if answer == correct_answer:
-            # TODO: Frage als richtig beantwortet markieren
+            # TODO: username finden + Syntaxfehler?
+            mark_question_answered(username = "torsten", question_id, correct = True)
             return jsonify({"status": "success", "message": "Correct answer!"}), 200
         else:
-            # TODO: Frage als falsch beantwortet markieren
+            mark_question_answered(username = "torsten", question_id, correct = False)
             return jsonify({"status": "success", "message": "Wrong answer!"}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
