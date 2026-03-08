@@ -124,7 +124,7 @@ load_questions_to_db()
 def authenticate(request):
     sid = request.headers.get('Session-ID')
     if not sid or not check_session(sid):
-        raise Exception("Unauthorized")
+        abort(401)
 
 def identify(username, password):
     cur.execute("SELECT password FROM users WHERE username = ?", (username,))
