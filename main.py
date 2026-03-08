@@ -187,11 +187,11 @@ def submit_answer():
         correct_answer = question.get('correct_answer')
         if answer == correct_answer:
             # TODO: username finden + Syntaxfehler?
-            mark_question_answered(username = "torsten", question_id, correct = True)
+            mark_question_answered(username = "torsten", question_id = question_id, correct = True)
             return jsonify({"status": "success", "message": "Correct answer!"}), 200
         else:
             # TODO: username finden, kein Syntaxfehler?
-            mark_question_answered(username = "torsten", question_id, correct = False)
+            mark_question_answered(username = "torsten", question_id = question_id, correct = False)
             return jsonify({"status": "success", "message": "Wrong answer!"}), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
